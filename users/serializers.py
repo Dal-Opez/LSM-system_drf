@@ -31,3 +31,13 @@ class UserSerializer(ModelSerializer):
             instance.set_password(password)
             instance.save()
         return instance
+
+
+class UserProfileSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'phone', 'city', 'avatar']  # Только эти поля будут доступны
+        read_only_fields = ['id', 'email']
+        extra_kwargs = {
+            'avatar': {'required': False}
+        }

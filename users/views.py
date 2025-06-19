@@ -4,7 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from users.models import Payment, User
-from users.serializers import PaymentSerializer, UserSerializer
+from users.serializers import PaymentSerializer, UserSerializer, UserProfileSerializer
 from rest_framework.generics import CreateAPIView, RetrieveUpdateAPIView, DestroyAPIView, ListAPIView
 from users.permissions import IsOwner
 
@@ -38,13 +38,15 @@ class UserCreateAPIView(CreateAPIView):
 
 
 class UserProfileAPIView(RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
+    serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated, IsOwner]
     filter_backends = (filters.SearchFilter,)
     search_fields = ('email', 'phone', 'city',)
 
     def get_object(self):
         return self.request.user
+
+
 
 class UserDeleteAPIView(DestroyAPIView):
     serializer_class = UserSerializer
@@ -69,3 +71,5 @@ class UserListAPIView(ListAPIView):
 
     def get_queryset(self):
         return User.objects.all()
+
+
