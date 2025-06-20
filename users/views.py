@@ -57,7 +57,7 @@ class UserDeleteAPIView(DestroyAPIView):
 
 class UserListAPIView(ListAPIView):
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated,]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'email': ['exact'],
@@ -70,6 +70,8 @@ class UserListAPIView(ListAPIView):
     ordering = ['-date_joined']
 
     def get_queryset(self):
-        return User.objects.all()
+        if self.request.user.is_staff or self.request.user.groups.filter(name='moders').exists():
+            return User.objects.all()
+        return User.objects.filter(id=self.request.user.id)
 
 
