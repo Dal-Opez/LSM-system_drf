@@ -1,6 +1,7 @@
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from users.models import Payment, User
@@ -42,9 +43,19 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated, IsOwner]
     filter_backends = (filters.SearchFilter,)
     search_fields = ('email', 'phone', 'city',)
+    queryset = User.objects.all()
 
     def get_object(self):
+        if 'pk' in self.kwargs:
+            return super().get_object()
         return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 
