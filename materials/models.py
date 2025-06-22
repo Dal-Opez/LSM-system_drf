@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from materials.validators import validate_youtube_url
 
 
 # Create your models here.
@@ -50,7 +51,7 @@ class Lesson(models.Model):
         help_text="Загрузите превью урока",
     )
     video_link = models.URLField(
-        unique=True, verbose_name="Ссылка на видео", help_text="Укажите ссылку на видео"
+        unique=True, verbose_name="Ссылка на видео", help_text="Укажите ссылку на видео", validators=[validate_youtube_url]
     )
     course = models.ForeignKey(
         Course, on_delete=models.CASCADE, verbose_name="Курс", help_text="Выберите курс"
