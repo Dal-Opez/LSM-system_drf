@@ -11,7 +11,7 @@ class CourseSerializer(ModelSerializer):
 
     class Meta:
         model = Course
-        fields = '__all__'
+        fields = "__all__"
 
     def get_count_lessons_in_course(self, course):
         return course.lesson_set.count()
@@ -21,12 +21,10 @@ class CourseSerializer(ModelSerializer):
         return LessonSerializer(lessons, many=True).data
 
     def get_is_subscribed(self, obj):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if user.is_authenticated:
             return obj.subscriptions.filter(user=user).exists()
         return False
-
-
 
 
 class CourseDetailSerializer(ModelSerializer):
@@ -42,25 +40,29 @@ class CourseDetailSerializer(ModelSerializer):
         return LessonSerializer(lessons, many=True).data
 
     def get_is_subscribed(self, obj):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if user.is_authenticated:
             return obj.subscriptions.filter(user=user).exists()
         return False
 
     class Meta:
         model = Course
-        fields = ('name', "count_lessons_in_course", 'lessons', 'is_subscribed',)
+        fields = (
+            "name",
+            "count_lessons_in_course",
+            "lessons",
+            "is_subscribed",
+        )
+
 
 class LessonSerializer(ModelSerializer):
     class Meta:
         model = Lesson
-        fields = '__all__'
-        extra_kwargs = {
-            'video_link': {'validators': [validate_youtube_url]}
-        }
+        fields = "__all__"
+        extra_kwargs = {"video_link": {"validators": [validate_youtube_url]}}
 
 
 class SubscriptionSerializer(ModelSerializer):
     class Meta:
         model = Subscription
-        fields = '__all__'
+        fields = "__all__"

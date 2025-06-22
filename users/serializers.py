@@ -7,7 +7,7 @@ class PaymentSerializer(ModelSerializer):
 
     class Meta:
         model = Payment
-        fields = '__all__'
+        fields = "__all__"
 
 
 class UserSerializer(ModelSerializer):
@@ -15,17 +15,23 @@ class UserSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'phone', 'city', 'avatar', 'payments']
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'email': {'required': True}
-        }
+        fields = [
+            "id",
+            "email",
+            "password",
+            "phone",
+            "city",
+            "avatar",
+            "payments",
+            "is_moderator",
+        ]
+        extra_kwargs = {"password": {"write_only": True}, "email": {"required": True}}
 
     def create(self, validated_data):
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
+        password = validated_data.pop("password", None)
         instance = super().update(instance, validated_data)
         if password:
             instance.set_password(password)
@@ -36,8 +42,12 @@ class UserSerializer(ModelSerializer):
 class UserProfileSerializer(ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'phone', 'city', 'avatar']  # Только эти поля будут доступны
-        read_only_fields = ['id', 'email']
-        extra_kwargs = {
-            'avatar': {'required': False}
-        }
+        fields = [
+            "id",
+            "email",
+            "phone",
+            "city",
+            "avatar",
+        ]  # Только эти поля будут доступны
+        read_only_fields = ["id", "email"]
+        extra_kwargs = {"avatar": {"required": False}}
