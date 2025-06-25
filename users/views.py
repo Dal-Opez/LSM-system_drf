@@ -13,6 +13,7 @@ from rest_framework.generics import (
     ListAPIView,
 )
 from users.permissions import IsOwner
+from drf_yasg.utils import swagger_auto_schema
 
 
 # Create your views here.
@@ -23,6 +24,21 @@ class PaymentViewSet(ModelViewSet):
     filterset_fields = ("payment_date", "paid_course", "paid_lesson", "payment_method")
     ordering_fields = ("payment_date",)
     ordering = ("-payment_date",)
+    @swagger_auto_schema(
+        operation_summary="Список платежей",
+        operation_description="Список платежей. Для администраторов — все платежи, для пользователей — только свои.",
+        tags=['Платежи']
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Детали платежа",
+        operation_description="Детали платежа. Для администраторов — любой платеж, для пользователей — только свои.",
+        tags=['Платежи']
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
     def get_queryset(self):
         if not self.request.user.is_staff:
@@ -34,6 +50,18 @@ class UserCreateAPIView(CreateAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
+
+    @swagger_auto_schema(
+        operation_summary="Регистрация пользователя",
+        operation_description="Создание нового пользователя. Доступно без аутентификации.",
+        tags=['Пользователи'],
+        responses={
+            201: UserSerializer,
+            400: "Неверные данные"
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         password = serializer.validated_data.get("password")
@@ -53,6 +81,29 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
         "city",
     )
     queryset = User.objects.all()
+    @swagger_auto_schema(
+        operation_summary="Получение профиля",
+        operation_description="Получение профиля пользователя. Доступно только владельцу.",
+        tags=['Пользователи']
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Обновление профиля",
+        operation_description="Обновление профиля пользователя. Доступно только владельцу.",
+        tags=['Пользователи']
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Полное обновление профиля",
+        operation_description="Полное обновление профиля пользователя. Доступно только владельцу.",
+        tags=['Пользователи']
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
 
     def get_object(self):
         if "pk" in self.kwargs:
@@ -70,6 +121,17 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
 class UserDeleteAPIView(DestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsOwner]
+    @swagger_auto_schema(
+        operation_summary="Удаление пользователя",
+        operation_description="Удаление текущего пользователя. Доступно только владельцу.",
+        tags=['Пользователи'],
+        responses={
+            204: "No Content",
+            403: "Forbidden"
+        }
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
 
     def get_object(self):
         return self.request.user
@@ -94,6 +156,13 @@ class UserListAPIView(ListAPIView):
     search_fields = ["email", "phone", "city"]
     ordering_fields = ["email", "date_joined"]
     ordering = ["-date_joined"]
+    @swagger_auto_schema(
+        operation_summary="Список пользователей",
+        operation_description="Список пользователей. Для администраторов/модераторов — все пользователи, для остальных — только свой профиль.",
+        tags=['Пользователи']
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         if (
