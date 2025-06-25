@@ -1,9 +1,16 @@
+from django.urls import reverse
+from rest_framework import status
+from drf_yasg import openapi
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+
+from materials.models import Course
 from users.models import Payment, User
 from users.serializers import PaymentSerializer, UserSerializer, UserProfileSerializer
 from rest_framework.generics import (
@@ -15,6 +22,12 @@ from rest_framework.generics import (
 from users.permissions import IsOwner
 from drf_yasg.utils import swagger_auto_schema
 
+from users.services import (
+    create_stripe_product,
+    create_stripe_price,
+    create_stripe_session,
+)
+
 
 # Create your views here.
 class PaymentViewSet(ModelViewSet):
@@ -24,10 +37,11 @@ class PaymentViewSet(ModelViewSet):
     filterset_fields = ("payment_date", "paid_course", "paid_lesson", "payment_method")
     ordering_fields = ("payment_date",)
     ordering = ("-payment_date",)
+
     @swagger_auto_schema(
         operation_summary="Список платежей",
         operation_description="Список платежей. Для администраторов — все платежи, для пользователей — только свои.",
-        tags=['Платежи']
+        tags=["Платежи"],
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
@@ -35,7 +49,7 @@ class PaymentViewSet(ModelViewSet):
     @swagger_auto_schema(
         operation_summary="Детали платежа",
         operation_description="Детали платежа. Для администраторов — любой платеж, для пользователей — только свои.",
-        tags=['Платежи']
+        tags=["Платежи"],
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
@@ -54,11 +68,8 @@ class UserCreateAPIView(CreateAPIView):
     @swagger_auto_schema(
         operation_summary="Регистрация пользователя",
         operation_description="Создание нового пользователя. Доступно без аутентификации.",
-        tags=['Пользователи'],
-        responses={
-            201: UserSerializer,
-            400: "Неверные данные"
-        }
+        tags=["Пользователи"],
+        responses={201: UserSerializer, 400: "Неверные данные"},
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
@@ -81,10 +92,11 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
         "city",
     )
     queryset = User.objects.all()
+
     @swagger_auto_schema(
         operation_summary="Получение профиля",
         operation_description="Получение профиля пользователя. Доступно только владельцу.",
-        tags=['Пользователи']
+        tags=["Пользователи"],
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
@@ -92,7 +104,7 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
     @swagger_auto_schema(
         operation_summary="Обновление профиля",
         operation_description="Обновление профиля пользователя. Доступно только владельцу.",
-        tags=['Пользователи']
+        tags=["Пользователи"],
     )
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
@@ -100,7 +112,7 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
     @swagger_auto_schema(
         operation_summary="Полное обновление профиля",
         operation_description="Полное обновление профиля пользователя. Доступно только владельцу.",
-        tags=['Пользователи']
+        tags=["Пользователи"],
     )
     def put(self, request, *args, **kwargs):
         return super().put(request, *args, **kwargs)
@@ -121,14 +133,12 @@ class UserProfileAPIView(RetrieveUpdateAPIView):
 class UserDeleteAPIView(DestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsOwner]
+
     @swagger_auto_schema(
         operation_summary="Удаление пользователя",
         operation_description="Удаление текущего пользователя. Доступно только владельцу.",
-        tags=['Пользователи'],
-        responses={
-            204: "No Content",
-            403: "Forbidden"
-        }
+        tags=["Пользователи"],
+        responses={204: "No Content", 403: "Forbidden"},
     )
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
@@ -156,10 +166,11 @@ class UserListAPIView(ListAPIView):
     search_fields = ["email", "phone", "city"]
     ordering_fields = ["email", "date_joined"]
     ordering = ["-date_joined"]
+
     @swagger_auto_schema(
         operation_summary="Список пользователей",
         operation_description="Список пользователей. Для администраторов/модераторов — все пользователи, для остальных — только свой профиль.",
-        tags=['Пользователи']
+        tags=["Пользователи"],
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
@@ -171,3 +182,53 @@ class UserListAPIView(ListAPIView):
         ):
             return User.objects.all()
         return User.objects.filter(id=self.request.user.id)
+
+
+class CoursePaymentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Оплата курса",
+        operation_description="Создает платежную сессию Stripe для оплаты курса.",
+        tags=["Платежи"],
+        responses={
+            200: openapi.Response(
+                description="Ссылка на оплату",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "payment_link": openapi.Schema(type=openapi.TYPE_STRING)
+                    },
+                ),
+            ),
+            404: "Курс не найден",
+        },
+    )
+    def post(self, request, course_id):
+        course = get_object_or_404(Course, id=course_id)
+        user = request.user
+
+        # Создаем продукт и цену в Stripe
+        product_id = create_stripe_product(course)
+        price_id = create_stripe_price(product_id, course.price)
+
+        # Создаем сессию оплаты
+        success_url = request.build_absolute_uri(reverse("users:payment-success"))
+        cancel_url = request.build_absolute_uri(reverse("users:payment-cancel"))
+        session_data = create_stripe_session(price_id, success_url, cancel_url)
+
+        # Сохраняем платеж в БД
+        payment = Payment.objects.create(
+            user=user,
+            paid_course=course,
+            amount=course.price,
+            payment_method="card",
+            stripe_product_id=product_id,
+            stripe_price_id=price_id,
+            stripe_session_id=session_data["session_id"],
+            stripe_payment_link=session_data["payment_link"],
+        )
+
+        return Response(
+            {"payment_link": session_data["payment_link"]}, status=status.HTTP_200_OK
+        )

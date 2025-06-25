@@ -18,10 +18,10 @@ router = SimpleRouter()
 router.register("", CourseViewSet)
 
 lesson_list = swagger_auto_schema(
-    method='get',
+    method="get",
     operation_summary="Список уроков",
     operation_description="Возвращает paginated-список всех уроков.",
-    tags=['Уроки']
+    tags=["Уроки"],
 )(LessonListApiView.as_view())
 
 urlpatterns = [
