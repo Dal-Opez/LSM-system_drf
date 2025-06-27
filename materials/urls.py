@@ -10,14 +10,23 @@ from materials.views import (
     LessonRetrieveApiView,
     SubscriptionAPIView,
 )
+from drf_yasg.utils import swagger_auto_schema
 
 app_name = MaterialsConfig.name
 
 router = SimpleRouter()
 router.register("", CourseViewSet)
 
+lesson_list = swagger_auto_schema(
+    method="get",
+    operation_summary="Список уроков",
+    operation_description="Возвращает paginated-список всех уроков.",
+    tags=["Уроки"],
+)(LessonListApiView.as_view())
+
 urlpatterns = [
-    path("lessons/", LessonListApiView.as_view(), name="lessons_list"),
+    path("lessons/", lesson_list, name="lessons_list"),
+    # path("lessons/", LessonListApiView.as_view(), name="lessons_list"),
     path("lessons/<int:pk>/", LessonRetrieveApiView.as_view(), name="lesson_retrieve"),
     path("lessons/create/", LessonCreateApiView.as_view(), name="lesson_create"),
     path(
@@ -26,7 +35,7 @@ urlpatterns = [
     path(
         "lessons/<int:pk>/update/", LessonUpdateApiView.as_view(), name="lesson_update"
     ),
-    path("lessons/", LessonListApiView.as_view(), name="lessons_list"),
+    # path("lessons/", LessonListApiView.as_view(), name="lessons_list"),
     path("subscriptions/", SubscriptionAPIView.as_view(), name="subscriptions"),
 ]
 
