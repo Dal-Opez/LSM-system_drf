@@ -5,6 +5,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir poetry \
     && apt-get update \
     && apt-get install -y gcc libpq-dev \
+    && apt-get install -y --no-install-recommends curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

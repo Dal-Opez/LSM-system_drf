@@ -1,35 +1,50 @@
-# LSM-system_drf - Django REST Framework проект
+# LSM-system_drf - Django REST Framework
 
 ## Описание проекта
-Проект представляет собой веб-приложение на Django REST Framework с использованием:
-- PostgreSQL
-- Redis
-- Celery
-- Celery Beat
+Веб-приложение на Django REST Framework с использованием:
+- PostgreSQL 16.0 - основная база данных
+- Redis 7.0 - брокер сообщений и кэширование
+- Celery - асинхронные задачи
+- Celery Beat - периодические задачи
 
-## Требования
-- Docker (версия 20.10.0+)
-- Docker Compose (версия 1.29.0+)
-- `.env` файл с необходимыми переменными окружения
+## 🛠 Требования
+- Docker 20.10+
+- Docker Compose 1.29+
+- Файл `.env` с конфигурацией
 
-## Запуск проекта
+## 🚀 Запуск проекта
 
-### 1. Подготовка окружения
-Создайте файл `.env` в корне проекта с содержимым:
-
+### 1. Настройка окружения
+Создайте `.env` файл в корне проекта:
 ```env
-# Настройки PostgreSQL
-NAME=your_db_name
-USER=your_db_user
-PASSWORD=your_db_password
+# PostgreSQL
+NAME=lsm_drf
+USER=postgres
+PASSWORD=your_secure_password
 
-# Настройки Redis
+# Redis
 REDIS_URL=redis://redis:6379/0
 
-# Настройки Django
-SECRET_KEY=your_secret_key
+# Django
+SECRET_KEY=your-secret-key-here
 DEBUG=True
 
-# Настройки Celery
+# Celery
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
+```
+
+### 2. Запуск системы
+В терминале выполните команду:
+```
+docker-compose up -d --build
+```
+После выполнения этой команды будут собраны образы, запустятся сервисы, будут применены миграции, запустится сервер.
+
+## Проверка работоспособности
+Для проверки основных сервисов нужно выполнить команды:
+```
+#Проверка статуса всех контейнеров
+docker-compose ps
+```
+
