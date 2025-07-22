@@ -162,7 +162,7 @@ jobs:
 
     - name: Deploy to Server
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'bash -s' << 'EOF'
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
           docker stop lsm-system-drf || true
           docker rm lsm-system-drf || true
@@ -171,10 +171,10 @@ jobs:
             -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
             -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
             -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-            -e DB_HOST=db \  # Для Docker используем имя сервиса
+            -e DB_HOST=db \
             -e DB_PORT=${{ secrets.DB_PORT }} \
-            -e CELERY_BROKER_URL=redis://redis:6379/0 \  # Для Docker используем имя сервиса
+            -e CELERY_BROKER_URL=redis://redis:6379/0 \
             -e STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }} \
             -e STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }} \
             ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
-        EOF
+        EOF'
