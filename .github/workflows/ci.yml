@@ -160,21 +160,28 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_KEY }}
 
-    - name: Deploy to Server
+    - name: Create deploy script
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "bash -c '
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
-          docker stop lsm-system-drf || true
-          docker rm lsm-system-drf || true
-          docker run -d --name lsm-system-drf -p 80:8000 \
-            -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
-            -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
-            -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
-            -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-            -e DB_HOST=db \
-            -e DB_PORT=${{ secrets.DB_PORT }} \
-            -e CELERY_BROKER_URL=redis://redis:6379/0 \
-            -e STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }} \
-            -e STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }} \
-            ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
-        '"
+        cat > deploy.sh << 'EOS'
+        #!/bin/bash
+        set -x  # Включить отладку
+        docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
+        docker stop lsm-system-drf || true
+        docker rm lsm-system-drf || true
+        docker run -d --name lsm-system-drf -p 80:8000 \
+          -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+          -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+          -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+          -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+          -e DB_HOST=db \
+          -e DB_PORT=${{ secrets.DB_PORT }} \
+          -e CELERY_BROKER_URL=redis://redis:6379/0 \
+          -e STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }} \
+          -e STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }} \
+          ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
+        EOS
+
+    - name: Transfer and execute script
+      run: |
+        scp -o StrictHostKeyChecking=no deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "chmod +x /tmp/deploy.sh && /tmp/deploy.sh"
