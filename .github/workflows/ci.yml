@@ -162,24 +162,28 @@ jobs:
 
       - name: Deploy to Server
         run: |
-          SCRIPT="
+          # Создаем временный файл со скриптом
+          echo '#!/bin/bash
           set -ex
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
+          docker pull '"${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}"'
           docker stop lsm-system-drf || true
           docker rm lsm-system-drf || true
           docker run -d --name lsm-system-drf -p 80:8000 \
-            -e SECRET_KEY='${{ secrets.SECRET_KEY }}' \
-            -e POSTGRES_DB='${{ secrets.POSTGRES_DB }}' \
-            -e POSTGRES_USER='${{ secrets.POSTGRES_USER }}' \
-            -e POSTGRES_PASSWORD='${{ secrets.POSTGRES_PASSWORD }}' \
+            -e SECRET_KEY='"'"'${{ secrets.SECRET_KEY }}'"'"' \
+            -e POSTGRES_DB='"'"'${{ secrets.POSTGRES_DB }}'"'"' \
+            -e POSTGRES_USER='"'"'${{ secrets.POSTGRES_USER }}'"'"' \
+            -e POSTGRES_PASSWORD='"'"'${{ secrets.POSTGRES_PASSWORD }}'"'"' \
             -e DB_HOST=db \
-            -e DB_PORT='${{ secrets.DB_PORT }}' \
+            -e DB_PORT='"'"'${{ secrets.DB_PORT }}'"'"' \
             -e CELERY_BROKER_URL=redis://redis:6379/0 \
-            -e STRIPE_API_KEY='${{ secrets.STRIPE_API_KEY }}' \
-            -e STRIPE_PUBLIC_KEY='${{ secrets.STRIPE_PUBLIC_KEY }}' \
-            ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
-          "
+            -e STRIPE_API_KEY='"'"'${{ secrets.STRIPE_API_KEY }}'"'"' \
+            -e STRIPE_PUBLIC_KEY='"'"'${{ secrets.STRIPE_PUBLIC_KEY }}'"'"' \
+            '"${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}" > deploy.sh
   
-          # Кодируем и передаем
-          ENCODED_SCRIPT=$(echo "$SCRIPT" | base64 -w0)
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "echo $ENCODED_SCRIPT | base64 -d | bash"
+          # Копируем и выполняем
+          scp -o StrictHostKeyChecking=no deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            chmod +x /tmp/deploy.sh &&
+            /tmp/deploy.sh &&
+            rm /tmp/deploy.sh
+          "
