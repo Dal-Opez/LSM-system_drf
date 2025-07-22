@@ -1,0 +1,101 @@
+name: Django CI
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+
+
+      - name: Install flake8
+        run: |
+          pip install --no-cache-dir poetry
+          poetry add flake8
+
+      - name: Run flake8
+        run: flake8 .
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.5.1
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Cache Poetry virtualenv
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          poetry-${{ runner.os }}-
+
+    - name: Install dependencies with Poetry
+      run: |
+        poetry config virtualenvs.in-project true
+        poetry install --no-interaction --no-ansi
+
+    - name: Run migrations
+      run: poetry run python manage.py migrate
+
+    - name: Run tests
+      run: poetry run python manage.py test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }} .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_KEY }}
+
+    - name: Deploy to Server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
+          docker stop LSM-system_drf || true
+          docker rm LSM-system_drf || true
+          docker run -d --name LSM-system_drf -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
+        EOF
+
