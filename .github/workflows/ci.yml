@@ -9,15 +9,22 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install flake8
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.5.1
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
         run: |
-          pip install --no-cache-dir poetry
-          poetry install --no-interaction --no-ansi  # Установит все зависимости из pyproject.toml
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-ansi
 
       - name: Run flake8
         run: poetry run flake8 .
@@ -30,10 +37,10 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v3
 
-    - name: Set up Python
+    - name: Set up Python 3.11  # Изменено с 3.10 на 3.11
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     - name: Install Poetry
       uses: snok/install-poetry@v1
@@ -96,4 +103,3 @@ jobs:
           docker rm LSM-system_drf || true
           docker run -d --name LSM-system_drf -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
         EOF
-
