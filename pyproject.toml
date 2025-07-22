@@ -5,6 +5,9 @@ description = ""
 authors = ["DalOpez <alex-grazhdankin@mail.ru>"]
 readme = "README.md"
 #package-mode = false
+packages = [
+    { include = "*" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -28,10 +31,10 @@ gunicorn = "^23.0.0"
 django-redis = "^6.0.0"
 flake8 = "^7.3.0"
 
-[tool.poetry.packages]
-include = [
-    { include = "*" }
-]
+#[tool.poetry.packages]
+#include = [
+#    { include = "*" }
+#]
 
 [build-system]
 requires = ["poetry-core"]
