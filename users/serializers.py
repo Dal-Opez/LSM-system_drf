@@ -1,6 +1,5 @@
 from rest_framework.serializers import ModelSerializer
 from users.models import Payment, User
-from django.contrib.auth.hashers import make_password
 
 
 class PaymentSerializer(ModelSerializer):
