@@ -162,7 +162,7 @@ jobs:
 
     - name: Create deploy script
       run: |
-        cat > deploy.sh << 'EOS'
+        cat << 'EOS' > "$GITHUB_WORKSPACE/deploy.sh"
         #!/bin/bash
         set -x  # Включить отладку
         docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
@@ -181,7 +181,11 @@ jobs:
           ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
         EOS
 
+        # Проверка создания файла
+        ls -la "$GITHUB_WORKSPACE"
+        cat "$GITHUB_WORKSPACE/deploy.sh"
+
     - name: Transfer and execute script
       run: |
-        scp -o StrictHostKeyChecking=no deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
+        scp -o StrictHostKeyChecking=no "$GITHUB_WORKSPACE/deploy.sh" ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
         ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "chmod +x /tmp/deploy.sh && /tmp/deploy.sh"
