@@ -2,12 +2,54 @@ name: Django CI
 
 on: [push, pull_request]
 
+env:
+  # Основные настройки
+  SECRET_KEY: ${{ secrets.SECRET_KEY }}
+  DEBUG: "False"
+
+  # Настройки базы данных
+  POSTGRES_DB: test_db
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  HOST: localhost
+  PORT: 5432
+  DB_HOST: db
+  DB_PORT: 5432
+
+  # Redis/Celery
+  REDIS_HOST: redis
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+
+  # Email (тестовые значения)
+  EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+  EMAIL_HOST: smtp.example.com
+  EMAIL_PORT: "587"
+  EMAIL_HOST_USER: user@example.com
+  EMAIL_HOST_PASSWORD: password
+  EMAIL_USE_TLS: "True"
+  EMAIL_USE_SSL: "False"
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
@@ -27,17 +69,32 @@ jobs:
           poetry install --no-interaction --no-ansi
 
       - name: Run flake8
-        run: poetry run flake8 .
+        run: |
+          echo -e "[flake8]\nexclude = .venv\nper-file-ignores = .venv/*:E301,E302,W391" > .flake8
+          poetry run flake8 .
 
   test:
     needs: lint
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-    - name: Set up Python 3.11  # Изменено с 3.10 на 3.11
+    - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
@@ -73,17 +130,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Log in to Docker Hub
-        run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+        run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }} .
+        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }} .
 
       - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
+        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
 
   deploy:
     needs: build
@@ -98,8 +154,18 @@ jobs:
     - name: Deploy to Server
       run: |
         ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
-          docker stop LSM-system_drf || true
-          docker rm LSM-system_drf || true
-          docker run -d --name LSM-system_drf -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/LSM-system_drf:${{ github.sha }}
+          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
+          docker stop lsm-system-drf || true
+          docker rm lsm-system-drf || true
+          docker run -d --name lsm-system-drf -p 80:8000 \
+            -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+            -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+            -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            -e DB_HOST=${{ secrets.DB_HOST }} \
+            -e DB_PORT=${{ secrets.DB_PORT }} \
+            -e CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }} \
+            -e STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }} \
+            -e STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }} \
+            ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
         EOF
