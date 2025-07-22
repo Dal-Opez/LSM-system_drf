@@ -11,11 +11,11 @@ env:
   POSTGRES_DB: test_db
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
-  DB_HOST: localhost  # Указываем localhost для CI
+  DB_HOST: localhost
   DB_PORT: 5432
 
   # Redis/Celery
-  REDIS_HOST: localhost  # Меняем на localhost для CI
+  REDIS_HOST: localhost
   CELERY_BROKER_URL: redis://localhost:6379/0
   CELERY_RESULT_BACKEND: redis://localhost:6379/0
 
@@ -160,11 +160,14 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_KEY }}
 
-    - name: Create deploy script
+    - name: Create and deploy script
       run: |
-        cat << 'EOS' > "$GITHUB_WORKSPACE/deploy.sh"
+        # Создаем скрипт прямо в домашней директории
+        DEPLOY_SCRIPT="$HOME/deploy.sh"
+        
+        cat << 'EOS' > "$DEPLOY_SCRIPT"
         #!/bin/bash
-        set -x  # Включить отладку
+        set -x
         docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
         docker stop lsm-system-drf || true
         docker rm lsm-system-drf || true
@@ -181,11 +184,9 @@ jobs:
           ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
         EOS
 
-        # Проверка создания файла
-        ls -la "$GITHUB_WORKSPACE"
-        cat "$GITHUB_WORKSPACE/deploy.sh"
+        # Даем права на выполнение
+        chmod +x "$DEPLOY_SCRIPT"
 
-    - name: Transfer and execute script
-      run: |
-        scp -o StrictHostKeyChecking=no "$GITHUB_WORKSPACE/deploy.sh" ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
+        # Копируем и выполняем на сервере
+        scp -o StrictHostKeyChecking=no "$DEPLOY_SCRIPT" ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
         ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "chmod +x /tmp/deploy.sh && /tmp/deploy.sh"
