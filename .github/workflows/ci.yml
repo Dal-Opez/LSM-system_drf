@@ -11,15 +11,13 @@ env:
   POSTGRES_DB: test_db
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
-  HOST: localhost
-  PORT: 5432
-  DB_HOST: db
+  DB_HOST: localhost  # Указываем localhost для CI
   DB_PORT: 5432
 
   # Redis/Celery
-  REDIS_HOST: redis
-  CELERY_BROKER_URL: redis://redis:6379/0
-  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  REDIS_HOST: localhost  # Меняем на localhost для CI
+  CELERY_BROKER_URL: redis://localhost:6379/0
+  CELERY_RESULT_BACKEND: redis://localhost:6379/0
 
   # Email (тестовые значения)
   EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
@@ -42,7 +40,11 @@ jobs:
           POSTGRES_DB: test_db
         ports:
           - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       redis:
         image: redis:6
         ports:
@@ -85,7 +87,11 @@ jobs:
           POSTGRES_DB: test_db
         ports:
           - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       redis:
         image: redis:6
         ports:
@@ -162,9 +168,9 @@ jobs:
             -e POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
             -e POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
             -e POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
-            -e DB_HOST=${{ secrets.DB_HOST }} \
+            -e DB_HOST=db \  # Для Docker используем имя сервиса
             -e DB_PORT=${{ secrets.DB_PORT }} \
-            -e CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }} \
+            -e CELERY_BROKER_URL=redis://redis:6379/0 \  # Для Docker используем имя сервиса
             -e STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }} \
             -e STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }} \
             ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
