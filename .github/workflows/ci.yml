@@ -14,15 +14,13 @@ jobs:
         with:
           python-version: '3.10'
 
-
-
       - name: Install flake8
         run: |
           pip install --no-cache-dir poetry
-          poetry add flake8
+          poetry install --no-interaction --no-ansi  # Установит все зависимости из pyproject.toml
 
       - name: Run flake8
-        run: flake8 .
+        run: poetry run flake8 .
 
   test:
     needs: lint
