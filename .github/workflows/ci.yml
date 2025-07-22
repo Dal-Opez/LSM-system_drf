@@ -162,7 +162,8 @@ jobs:
 
       - name: Deploy to Server
         run: |
-          ssh -T -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} <<EOF
+          SCRIPT="
+          set -ex
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
           docker stop lsm-system-drf || true
           docker rm lsm-system-drf || true
@@ -177,4 +178,8 @@ jobs:
             -e STRIPE_API_KEY='${{ secrets.STRIPE_API_KEY }}' \
             -e STRIPE_PUBLIC_KEY='${{ secrets.STRIPE_PUBLIC_KEY }}' \
             ${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}
-          EOF
+          "
+  
+          # Кодируем и передаем
+          ENCODED_SCRIPT=$(echo "$SCRIPT" | base64 -w0)
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "echo $ENCODED_SCRIPT | base64 -d | bash"
