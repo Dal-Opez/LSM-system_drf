@@ -170,7 +170,7 @@ class UserListAPIView(ListAPIView):
     @swagger_auto_schema(
         operation_summary="Список пользователей",
         operation_description="Список пользователей. Для администраторов/модераторов"
-                              "— все пользователи, для остальных — только свой профиль.",
+        "— все пользователи, для остальных — только свой профиль.",
         tags=["Пользователи"],
     )
     def get(self, request, *args, **kwargs):
