@@ -162,11 +162,23 @@ jobs:
       - name: Validate Secrets
         run: |
           echo "Проверяем наличие всех секретов:"
-          for var in SECRET_KEY DOCKER_HUB_USERNAME SSH_KEY SSH_USER SERVER_IP STRIPE_API_KEY STRIPE_PUBLIC_KEY; do
-            if [ -z "${{ secrets[var] }}" ]; then
-              echo "❌ $var не установлен!"
+          secrets=(
+            "SECRET_KEY:${{ secrets.SECRET_KEY }}"
+            "DOCKER_HUB_USERNAME:${{ secrets.DOCKER_HUB_USERNAME }}"
+            "SSH_KEY:${{ secrets.SSH_KEY }}"
+            "SSH_USER:${{ secrets.SSH_USER }}"
+            "SERVER_IP:${{ secrets.SERVER_IP }}"
+            "STRIPE_API_KEY:${{ secrets.STRIPE_API_KEY }}"
+            "STRIPE_PUBLIC_KEY:${{ secrets.STRIPE_PUBLIC_KEY }}"
+          )
+          
+          for secret in "${secrets[@]}"; do
+            name="${secret%%:*}"
+            value="${secret#*:}"
+            if [ -z "$value" ]; then
+              echo "❌ $name не установлен!"
             else
-              echo "✅ $var присутствует (длина: ${#secrets[var]})"
+              echo "✅ $name присутствует (длина: ${#value})"
             fi
           done
   
@@ -176,16 +188,29 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_KEY }}
   
       - name: Deploy to Server
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_HUB_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DB_PORT: 5432
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
         run: |
-          echo "SSH_USER: ${SSH_USER}"
-          echo "SERVER_IP: ${SERVER_IP}"
-          cat > deploy.sh << 'EOF'
-          cat > deploy.sh << EOF
+          echo "Подготовка к деплою..."
+          echo "Пользователь SSH: $SSH_USER"
+          echo "IP сервера: $SERVER_IP"
+          
+          cat << 'EOF' > deploy.sh
           #!/bin/bash
           set -ex
-          echo "Trying to pull: ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG}"
+          echo "Попытка загрузки образа: ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG}"
           docker pull ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG} || {
-            echo "Failed to pull image, trying with fallback tag..."
+            echo "Не удалось загрузить образ, пробуем latest..."
             docker pull ${DOCKER_USER}/lsm-system-drf:latest
           }
           docker stop lsm-system-drf || true
@@ -202,8 +227,11 @@ jobs:
             -e STRIPE_PUBLIC_KEY="${STRIPE_PUBLIC_KEY}" \
             ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG}
           EOF
-      
+          
+          echo "Копируем deploy.sh на сервер..."
           scp -o StrictHostKeyChecking=no deploy.sh ${SSH_USER}@${SERVER_IP}:/tmp/deploy.sh
+          
+          echo "Запускаем деплой..."
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "
             chmod +x /tmp/deploy.sh &&
             /tmp/deploy.sh &&
