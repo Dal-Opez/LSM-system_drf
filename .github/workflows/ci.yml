@@ -203,31 +203,37 @@ jobs:
         run: |
           echo "Подготовка к деплою..."
           echo "DOCKER_USER: $DOCKER_USER"
-          echo "Пользователь SSH: $SSH_USER"
-          echo "IP сервера: $SERVER_IP"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "Полное имя образа: $DOCKER_USER/lsm-system-drf:$IMAGE_TAG"
           
-          cat << 'EOF' > deploy.sh
+          # Создаем deploy.sh с подстановкой переменных
+          cat << EOF > deploy.sh
           #!/bin/bash
           set -ex
-          echo "Попытка загрузки образа: ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG}"
-          docker pull ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG} || {
+          DOCKER_USER='$DOCKER_USER'
+          IMAGE_TAG='$IMAGE_TAG'
+          echo "Попытка загрузки образа: \${DOCKER_USER}/lsm-system-drf:\${IMAGE_TAG}"
+          docker pull \${DOCKER_USER}/lsm-system-drf:\${IMAGE_TAG} || {
             echo "Не удалось загрузить образ, пробуем latest..."
-            docker pull ${DOCKER_USER}/lsm-system-drf:latest
+            docker pull \${DOCKER_USER}/lsm-system-drf:latest
           }
           docker stop lsm-system-drf || true
           docker rm lsm-system-drf || true
-          docker run -d --name lsm-system-drf -p 80:8000 \
-            -e SECRET_KEY="${SECRET_KEY}" \
-            -e POSTGRES_DB="${POSTGRES_DB}" \
-            -e POSTGRES_USER="${POSTGRES_USER}" \
-            -e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
-            -e DB_HOST="db" \
-            -e DB_PORT="${DB_PORT}" \
-            -e CELERY_BROKER_URL="redis://redis:6379/0" \
-            -e STRIPE_API_KEY="${STRIPE_API_KEY}" \
-            -e STRIPE_PUBLIC_KEY="${STRIPE_PUBLIC_KEY}" \
-            ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG}
+          docker run -d --name lsm-system-drf -p 80:8000 \\
+            -e SECRET_KEY='$SECRET_KEY' \\
+            -e POSTGRES_DB='$POSTGRES_DB' \\
+            -e POSTGRES_USER='$POSTGRES_USER' \\
+            -e POSTGRES_PASSWORD='$POSTGRES_PASSWORD' \\
+            -e DB_HOST='db' \\
+            -e DB_PORT='$DB_PORT' \\
+            -e CELERY_BROKER_URL='redis://redis:6379/0' \\
+            -e STRIPE_API_KEY='$STRIPE_API_KEY' \\
+            -e STRIPE_PUBLIC_KEY='$STRIPE_PUBLIC_KEY' \\
+            \${DOCKER_USER}/lsm-system-drf:\${IMAGE_TAG}
           EOF
+          
+          echo "Содержимое deploy.sh:"
+          cat deploy.sh
           
           echo "Копируем deploy.sh на сервер..."
           scp -o StrictHostKeyChecking=no deploy.sh ${SSH_USER}@${SERVER_IP}:/tmp/deploy.sh
