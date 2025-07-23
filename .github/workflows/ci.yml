@@ -166,7 +166,7 @@ jobs:
   
       - name: Deploy to Server
         run: |
-          echo "SERVER_USER: ${SERVER_USER}"
+          echo "SSH_USER: ${SSH_USER}"
           echo "SERVER_IP: ${SERVER_IP}"
           cat > deploy.sh << 'EOF'
           cat > deploy.sh << EOF
@@ -192,8 +192,8 @@ jobs:
             ${DOCKER_USER}/lsm-system-drf:${IMAGE_TAG}
           EOF
       
-          scp -o StrictHostKeyChecking=no deploy.sh ${SERVER_USER}@${SERVER_IP}:/tmp/deploy.sh
-          ssh -o StrictHostKeyChecking=no ${SERVER_USER}@${SERVER_IP} "
+          scp -o StrictHostKeyChecking=no deploy.sh ${SSH_USER}@${SERVER_IP}:/tmp/deploy.sh
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "
             chmod +x /tmp/deploy.sh &&
             /tmp/deploy.sh &&
             rm /tmp/deploy.sh
