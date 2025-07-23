@@ -158,6 +158,17 @@ jobs:
         run: |
           echo "DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}"
           echo "GITHUB_SHA: ${{ github.sha }}"
+
+      - name: Validate Secrets
+        run: |
+          echo "Проверяем наличие всех секретов:"
+          for var in SECRET_KEY DOCKER_HUB_USERNAME SSH_KEY SSH_USER SERVER_IP STRIPE_API_KEY STRIPE_PUBLIC_KEY; do
+            if [ -z "${{ secrets[var] }}" ]; then
+              echo "❌ $var не установлен!"
+            else
+              echo "✅ $var присутствует (длина: ${#secrets[var]})"
+            fi
+          done
   
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
