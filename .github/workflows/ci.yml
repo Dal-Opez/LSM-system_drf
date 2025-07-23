@@ -162,28 +162,39 @@ jobs:
 
       - name: Deploy to Server
         run: |
-          # Создаем временный файл со скриптом
-          echo '#!/bin/bash
+          cat > deploy.sh << 'EOF'
+          #!/bin/bash
           set -ex
-          docker pull '"${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}"'
+          docker pull $DOCKER_USER/lsm-system-drf:$GITHUB_SHA
           docker stop lsm-system-drf || true
           docker rm lsm-system-drf || true
           docker run -d --name lsm-system-drf -p 80:8000 \
-            -e SECRET_KEY='"'"'${{ secrets.SECRET_KEY }}'"'"' \
-            -e POSTGRES_DB='"'"'${{ secrets.POSTGRES_DB }}'"'"' \
-            -e POSTGRES_USER='"'"'${{ secrets.POSTGRES_USER }}'"'"' \
-            -e POSTGRES_PASSWORD='"'"'${{ secrets.POSTGRES_PASSWORD }}'"'"' \
-            -e DB_HOST=db \
-            -e DB_PORT='"'"'${{ secrets.DB_PORT }}'"'"' \
-            -e CELERY_BROKER_URL=redis://redis:6379/0 \
-            -e STRIPE_API_KEY='"'"'${{ secrets.STRIPE_API_KEY }}'"'"' \
-            -e STRIPE_PUBLIC_KEY='"'"'${{ secrets.STRIPE_PUBLIC_KEY }}'"'"' \
-            '"${{ secrets.DOCKER_HUB_USERNAME }}/lsm-system-drf:${{ github.sha }}" > deploy.sh
-  
-          # Копируем и выполняем
-          scp -o StrictHostKeyChecking=no deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/tmp/
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            -e SECRET_KEY="$SECRET_KEY" \
+            -e POSTGRES_DB="$POSTGRES_DB" \
+            -e POSTGRES_USER="$POSTGRES_USER" \
+            -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            -e DB_HOST="db" \
+            -e DB_PORT="$DB_PORT" \
+            -e CELERY_BROKER_URL="redis://redis:6379/0" \
+            -e STRIPE_API_KEY="$STRIPE_API_KEY" \
+            -e STRIPE_PUBLIC_KEY="$STRIPE_PUBLIC_KEY" \
+            $DOCKER_USER/lsm-system-drf:$GITHUB_SHA
+          EOF
+
+          scp -o StrictHostKeyChecking=no deploy.sh $SERVER_USER@$SERVER_IP:/tmp/deploy.sh
+          ssh -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP "
             chmod +x /tmp/deploy.sh &&
             /tmp/deploy.sh &&
             rm /tmp/deploy.sh
           "
+        env:
+          DOCKER_USER: ${{ secrets.DOCKER_HUB_USERNAME }}
+          SERVER_USER: ${{ secrets.SSH_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DB_PORT: ${{ env.DB_PORT }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
