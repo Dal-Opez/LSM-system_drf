@@ -202,6 +202,7 @@ jobs:
           STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
         run: |
           echo "Подготовка к деплою..."
+          echo "DOCKER_USER: $DOCKER_USER"
           echo "Пользователь SSH: $SSH_USER"
           echo "IP сервера: $SERVER_IP"
           
