@@ -6,13 +6,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task
 def send_course_update_notification(course_id):
     try:
         course = Course.objects.get(id=course_id)
-        subscribers_emails = Subscription.objects.filter(
-            course=course
-        ).values_list('user__email', flat=True)
+        subscribers_emails = Subscription.objects.filter(course=course).values_list(
+            "user__email", flat=True
+        )
 
         if not subscribers_emails:
             return "Нет подписчиков для рассылки"

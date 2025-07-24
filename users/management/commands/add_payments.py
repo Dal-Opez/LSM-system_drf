@@ -35,12 +35,12 @@ class Command(BaseCommand):
         )
 
         # Создаем тестовые уроки
-        lesson1 = Lesson.objects.create(
-            name="Основы Python",
-            description="Введение в язык Python",
-            video_link="https://example.com/python-basics",
-            course=course1,
-        )
+        # lesson1 = Lesson.objects.create(
+        #     name="Основы Python",
+        #     description="Введение в язык Python",
+        #     video_link="https://example.com/python-basics",
+        #     course=course1,
+        # )
 
         lesson2 = Lesson.objects.create(
             name="Django ORM",

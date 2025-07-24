@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 
 from materials.models import Course
 from users.models import Payment, User
@@ -169,7 +169,8 @@ class UserListAPIView(ListAPIView):
 
     @swagger_auto_schema(
         operation_summary="Список пользователей",
-        operation_description="Список пользователей. Для администраторов/модераторов — все пользователи, для остальных — только свой профиль.",
+        operation_description="Список пользователей. Для администраторов/модераторов"
+        "— все пользователи, для остальных — только свой профиль.",
         tags=["Пользователи"],
     )
     def get(self, request, *args, **kwargs):
@@ -206,7 +207,7 @@ class CoursePaymentAPIView(APIView):
     )
     def post(self, request, course_id):
         course = get_object_or_404(Course, id=course_id)
-        user = request.user
+        # user = request.user
 
         # Создаем продукт и цену в Stripe
         product_id = create_stripe_product(course)
@@ -218,16 +219,16 @@ class CoursePaymentAPIView(APIView):
         session_data = create_stripe_session(price_id, success_url, cancel_url)
 
         # Сохраняем платеж в БД
-        payment = Payment.objects.create(
-            user=user,
-            paid_course=course,
-            amount=course.price,
-            payment_method="card",
-            stripe_product_id=product_id,
-            stripe_price_id=price_id,
-            stripe_session_id=session_data["session_id"],
-            stripe_payment_link=session_data["payment_link"],
-        )
+        # payment = Payment.objects.create(
+        #     user=user,
+        #     paid_course=course,
+        #     amount=course.price,
+        #     payment_method="card",
+        #     stripe_product_id=product_id,
+        #     stripe_price_id=price_id,
+        #     stripe_session_id=session_data["session_id"],
+        #     stripe_payment_link=session_data["payment_link"],
+        # )
 
         return Response(
             {"payment_link": session_data["payment_link"]}, status=status.HTTP_200_OK
